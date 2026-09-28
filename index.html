@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>威海 4 天 3 晚 · 海景自驾之旅</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root {
+    --bg: #0d2130;
+    --bg-soft: #102a3d;
+    --bg-card: #14324a;
+    --bg-card2: #0f2a3f;
+    --text: #f3eee3;
+    --text-dim: #9fb8c8;
+    --accent: #ff9d5c;        /* 落日橙 */
+    --accent2: #5cc8d7;       /* 海沫青 */
+    --border: rgba(255,255,255,.09);
+    --good: #7ed491;
+    --warn: #ffd166;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: linear-gradient(180deg, #0d2130 0%, #0e2436 55%, #10283a 100%);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    line-height: 1.65;
+    font-size: 15px;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 20px 16px 60px; }
+  .eyebrow { color: var(--accent2); letter-spacing: .35em; font-size: 12px; text-transform: uppercase; }
+  h1 {
+    font-family: ui-serif, Georgia, "Songti SC", "SimSun", serif;
+    font-size: 34px; line-height: 1.25; margin: 8px 0 6px; font-weight: 700;
+  }
+  h1 .hl { color: var(--accent); }
+  .sub { color: var(--text-dim); font-size: 14px; }
+  h2 {
+    font-family: ui-serif, Georgia, "Songti SC", "SimSun", serif;
+    font-size: 21px; margin: 0 0 14px; display: flex; align-items: center; gap: 10px;
+  }
+  h2 .no {
+    font-family: inherit; font-size: 12px; color: var(--bg); background: var(--accent);
+    border-radius: 999px; padding: 2px 9px; letter-spacing: .08em; font-weight: 700;
+  }
+  section { margin-top: 34px; }
+  .card {
+    background: linear-gradient(160deg, var(--bg-card), var(--bg-card2));
+    border: 1px solid var(--border); border-radius: 16px; padding: 16px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.18);
+  }
+  .grid { display: grid; gap: 12px; }
+
+  /* 页顶清单 */
+  .tripmeta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .pill {
+    font-size: 12px; color: var(--text-dim); border: 1px solid var(--border);
+    border-radius: 999px; padding: 3px 11px; background: rgba(255,255,255,.03);
+  }
+  .todo-item { list-style: none; display: flex; gap: 9px; align-items: baseline; padding: 7px 0; border-bottom: 1px dashed var(--border); }
+  .todo-item:last-child { border-bottom: 0; }
+  .todo-item input[type=checkbox] { accent-color: var(--accent); transform: translateY(2px); }
+  .todo-deadline { color: var(--accent); font-size: 12.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .todo-text { font-size: 14px; }
+
+  /* 行前须知 */
+  .kv { display: grid; grid-template-columns: 74px 1fr; gap: 6px 12px; font-size: 14px; }
+  .kv dt { color: var(--accent2); white-space: nowrap; }
+  .kv dd { color: var(--text); }
+
+  /* 航班 / 酒店 */
+  .flight-booked { border: 1px solid rgba(255,157,92,.45); background: rgba(255,157,92,.07); }
+  .badge { display: inline-block; font-size: 11px; border-radius: 999px; padding: 1px 9px; vertical-align: 2px; }
+  .badge.ok { background: rgba(126,212,145,.15); color: var(--good); border: 1px solid rgba(126,212,145,.4); }
+  .badge.pend { background: rgba(255,209,102,.12); color: var(--warn); border: 1px solid rgba(255,209,102,.35); }
+  .tier-line { display: flex; gap: 8px; align-items: baseline; margin-top: 8px; }
+  .tier { font-size: 11px; color: var(--accent2); border: 1px solid rgba(92,200,215,.4); border-radius: 999px; padding: 0 8px; white-space: nowrap; }
+  .hotel-opt { font-size: 14px; }
+  .hotel-opt b { font-weight: 600; }
+  .price { color: var(--accent); font-size: 12.5px; white-space: nowrap; }
+
+  /* 地图 */
+  #map { height: 420px; border-radius: 16px; border: 1px solid var(--border); z-index: 1; }
+  .route-pin { background: var(--accent); color: #14202b; font-weight: 700; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(255,157,92,.25); }
+  .map-note { font-size: 12px; color: var(--text-dim); margin-top: 8px; }
+
+  /* 时间轴 */
+  .day-head { margin: 26px 0 12px; }
+  .day-date { color: var(--accent2); font-size: 13px; letter-spacing: .12em; }
+  .day-title { font-family: ui-serif, Georgia, "Songti SC", "SimSun", serif; font-size: 20px; margin-top: 2px; }
+  .slot { position: relative; padding-left: 20px; margin-bottom: 14px; }
+  .slot::before { content: ""; position: absolute; left: 5px; top: 8px; bottom: -18px; width: 2px;
+    background: linear-gradient(180deg, var(--accent2), transparent); opacity: .4; }
+  .slot:last-child::before { display: none; }
+  .slot::after { content: ""; position: absolute; left: 0; top: 7px; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(255,157,92,.2); }
+  .slot-time { font-size: 12.5px; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: .03em; }
+  .slot-name { font-size: 16.5px; font-weight: 650; margin: 1px 0 3px; }
+  .slot-review { color: var(--text-dim); font-size: 13.5px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+  .tag { font-size: 11.5px; color: var(--text-dim); border: 1px solid var(--border); border-radius: 999px; padding: 1px 9px; background: rgba(255,255,255,.03); }
+  .tag.t { color: var(--accent2); border-color: rgba(92,200,215,.35); }
+  .star { color: var(--accent); font-size: 12.5px; }
+  .reminder-badge { font-size: 11.5px; color: var(--warn); border: 1px solid rgba(255,209,102,.4); background: rgba(255,209,102,.08); border-radius: 999px; padding: 1px 9px; }
+
+  .dining { border-left: 3px solid var(--accent2); padding: 10px 14px; background: rgba(92,200,215,.05); border-radius: 0 12px 12px 0; }
+  .dining .meal { font-size: 12px; color: var(--accent2); letter-spacing: .15em; }
+  .dining .place { font-weight: 650; font-size: 15px; }
+  .dining .hours { font-size: 12px; color: var(--text-dim); }
+  .dish { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; padding: 2px 0; }
+  .dish .p { color: var(--accent); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  .alt { display: grid; gap: 8px; }
+  .alt .opt { font-size: 13.5px; padding: 9px 12px; border: 1px dashed var(--border); border-radius: 12px; }
+  .alt .opt b { color: var(--accent2); }
+
+  .tips-list { padding-left: 0; list-style: none; }
+  .tips-list li { position: relative; padding-left: 20px; margin-bottom: 8px; font-size: 14px; color: var(--text); }
+  .tips-list li::before { content: "◆"; position: absolute; left: 0; top: 0; color: var(--accent2); font-size: 10px; }
+
+  .disclaimer { font-size: 12.5px; color: var(--text-dim); border: 1px solid rgba(255,209,102,.25);
+    background: rgba(255,209,102,.05); border-radius: 12px; padding: 12px 14px; margin-top: 14px; }
+  footer { margin-top: 46px; text-align: center; color: var(--text-dim); font-size: 12px; }
+
+  /* 图片规范（本页无外链图片，规则保留以备迭代加图） */
+  .slot-photo, .photo { width: 100%; object-fit: cover; display: block; }
+
+  @media (min-width: 768px) {
+    body { font-size: 15.5px; }
+    .wrap { max-width: 940px; padding: 36px 28px 80px; }
+    h1 { font-size: 44px; }
+    #map { height: 520px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .kv { grid-template-columns: 90px 1fr; }
+    .day-body { display: grid; grid-template-columns: 1.25fr .9fr; gap: 18px; align-items: start; }
+    .dining-block { margin-top: 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Weihai · Shandong · Golden Week</div>
+    <h1>威海 <span class="hl">4 天 3 晚</span><br>海景自驾之旅</h1>
+    <p class="sub">上海 → 青岛 → 威海 → 上海 · 2026.10.02 – 10.06 · 国庆黄金周</p>
+    <div class="tripmeta">
+      <span class="pill">🚗 全程自驾</span>
+      <span class="pill">🌅 海边 · 日落 · 出片</span>
+      <span class="pill">🦪 海鲜管够</span>
+      <span class="pill">🏖️ 免门票玩法</span>
+    </div>
+  </header>
+
+  <section id="checklist-sec">
+    <h2><span class="no">00</span>出发前待办</h2>
+    <div class="card" id="checklist-card"></div>
+  </section>
+
+  <section id="pretrip-sec">
+    <h2><span class="no">01</span>行前须知 · 十月初的威海</h2>
+    <div class="card">
+      <dl class="kv" id="pretrip-body"></dl>
+    </div>
+  </section>
+
+  <section id="flights-sec">
+    <h2><span class="no">02</span>航班 · 接送机</h2>
+    <div class="grid" id="flights-body"></div>
+    <div class="disclaimer" id="disclaimer-top">⚠️ <b>免责声明</b>：本页全部信息（天气、航班、酒店、餐厅、景点、门票、价格、营业时间、评分、活动等）均为 AI 基于公开资料整理的参考建议，可能不准确或已过时，不保证与实时情况一致；请务必在官方渠道 / 订票订房 / 地图等 App 上核实后再做决定或前往。潮汐时间以专业潮汐 App 实时数据为准。</div>
+  </section>
+
+  <section id="hotel-sec">
+    <h2><span class="no">03</span>住宿</h2>
+    <div class="grid" id="hotels-body"></div>
+  </section>
+
+  <section id="map-sec">
+    <h2><span class="no">04</span>行程地图</h2>
+    <div id="map"></div>
+    <p class="map-note">底图 © 高德地图 AutoNavi · 行程点位已按 GCJ-02 精确换算显示（±1–2 米），点击序号标记可看导航链接 · 文字行程离线可读；地图瓦片需联网。</p>
+  </section>
+
+  <section id="days-sec">
+    <h2><span class="no">05</span>每日行程</h2>
+    <div id="days-body"></div>
+  </section>
+
+  <section id="tips-sec">
+    <h2><span class="no">06</span>全程实用贴士</h2>
+    <div class="card"><ul class="tips-list" id="tips-body"></ul></div>
+    <div class="disclaimer" id="disclaimer-bottom">⚠️ <b>免责声明</b>：本页全部信息（天气、航班、酒店、餐厅、景点、门票、价格、营业时间、评分、活动等）均为 AI 基于公开资料整理的参考建议，可能不准确或已过时，不保证与实时情况一致；请务必在官方渠道 / 订票订房 / 地图等 App 上核实后再做决定或前往。潮汐时间以专业潮汐 App 实时数据为准。</div>
+  </section>
+
+  <footer>威海 4 天 3 晚 · travel-plan-viz · 手机制作 · 离线可读</footer>
+</div>
+
+<script id="trip-data" type="application/json">
+{
+  "title": "威海 4 天 3 晚 · 海景自驾之旅（上海→青岛→威海）",
+  "startDate": "2026-10-02",
+  "colorScheme": "深海夜蓝 + 落日橙 + 海沫青",
+  "preTrip": {
+    "weather": {
+      "summary": "10 月上旬威海约 11–21°C，晴多雨少；海边风大，傍晚看日落体感仅 12–15°C",
+      "typhoon": "10 月仍处秋台风尾巴季，出发前 3 天关注中央气象台/威海气象的大风预警；大风会影响海边观感和部分亲海活动"
+    },
+    "packing": "防风厚外套或薄羽绒马甲（早晚看日出日落必备）、长裤、舒适运动鞋、墨镜防晒；赶海拖鞋+小桶/铲/手套三件套（建议提前网购）；身份证驾驶证随身",
+    "payment": "全程移动支付畅通；夜市、赶海边小摊备 200 元左右零钱更方便",
+    "apps": ["全球潮汐 / 渔趣（查当日退潮时间，赶海必看）", "高德地图（自驾导航+实时躲避拥堵）", "中央气象台（大风/降水预警）", "航旅纵横（女朋友航班动态）"],
+    "ticketTip": "本行程全部免费景点、无门票排队；需提前确认的是：女朋友国际航班的护照/签证、民宿入住方式、以及 10.5 赶海当天的潮汐时间"
+  },
+  "flights": {
+    "booked": [
+      { "label": "女朋友 · 抵达青岛胶东国际机场", "code": "航班号以机票为准", "time": "2026-10-02 21:00 落地（取行李后约 21:40 出到达口）" },
+      { "label": "女朋友 · 威海大水泊国际机场 国际出发", "code": "国际航班，航班号以机票为准", "time": "2026-10-06 16:00 起飞 · 建议 13:15 前到国际出发口" }
+    ],
+    "candidates": []
+  },
+  "hotelAreas": [
+    {
+      "area": "国际海水浴场 · 火炬八街片区（威海主基地）",
+      "reason": "下楼即沙滩，步行火炬八街/日落湾，环海路自驾零绕路",
+      "options": [
+        { "tier": "已预订", "name": "幕锦日落海景民宿（国际海水浴场店）", "priceRange": "10.3–10.6 共 3 晚", "note": "一线海景；国际海水浴场片区，已下单确认" },
+        { "tier": "经济", "name": "梧桐民宿（火炬八街店 / 日落湾店）", "priceRange": "约 ¥300–500/晚（国庆浮动）", "note": "同片区备选，携程评分 4.7，海景标签多" },
+        { "tier": "中档", "name": "威海海信壹号观澜美宿", "priceRange": "约 ¥400–600/晚（国庆浮动）", "note": "海信海景壹号小区，对面即沙滩，评分 4.7" }
+      ]
+    },
+    {
+      "area": "青岛（10.2 过夜）",
+      "reason": "21:00 接机后就近入住，次日直接上高速去威海",
+      "options": [
+        { "tier": "已预订", "name": "青岛 10.2 晚酒店（已订）", "priceRange": "已订 1 晚", "note": "已确认，以订单信息为准" }
+      ]
+    }
+  ],
+  "disclaimer": "本页全部信息（天气、航班、酒店、餐厅、景点、门票、价格、营业时间、评分、活动等）均为 AI 基于公开资料整理的参考建议，可能不准确或已过时，不保证与实时情况一致；请务必在官方渠道 / 订票订房 / 地图等 App 上核实后再做决定或前往。潮汐时间以专业潮汐 App 实时数据为准。",
+  "tips": [
+    "国庆自驾：10.2 凌晨出发最稳；威海各日不早起、11 点开玩，夜里可玩夜潮赶海/星空夜拍，通宵看日出（约 05:50）也随意；导航开「躲避拥堵」；高速免费但服务区加油可能排队，油量保持半箱以上",
+    "环海路限速低、弯道多，慢行拍照找观景台停车，别路边随意停；国庆孙家疃/成山段易堵，错峰早上走",
+    "海边风大温差大：看日落一定带外套；10 月下水需勇气，主打沙滩漫步+赶海+拍照",
+    "赶海用「全球潮汐」查当日低潮时刻，提前 1 小时到，退潮后 2 小时内最出货；小桶铲子手套提前买好",
+    "吃海鲜首选「市场买了找店加工」，比直接点菜划算一半；国庆热门店（蚝堡等）17:00 前或 20:30 后去",
+    "大水泊机场是军民合用机场：候机区严禁拍摄机坪跑道；国际出发流程为 值机→海关→边检→安检，值机一般起飞前 60 分钟截止",
+    "10.6 返程 3 人轮换驾驶，每 2 小时进服务区休息；预计凌晨到家，出发前夜早点睡"
+  ],
+  "reminders": [
+    { "item": "女朋友国际航班证件检查（护照有效期/签证/目的地入境要求）", "leadDays": 7 },
+    { "item": "车辆保养检查（胎压/机油/玻璃水/备胎）", "leadDays": 5 },
+    { "item": "网购赶海三件套（小桶/铲子/手套）+ 防风外套补齐", "leadDays": 5 },
+    { "item": "联系幕锦民宿确认入住时间/取房方式", "leadDays": 3 },
+    { "item": "查 10.5 小石岛当日潮汐表（全球潮汐 App）", "leadDays": 1 },
+    { "item": "确认女朋友 10.2 抵达航班动态（21:00 落地）", "leadDays": 1 }
+  ],
+  "days": [
+    {
+      "date": "2026-10-02",
+      "weekday": "周五",
+      "theme": "赶路日 · 上海 → 青岛",
+      "tips": ["00:00 从上海出发（G15 沈海高速，约 780km / 8–9h 含休息）；到青岛先补觉再玩", "20:30 前到胶东机场到达口等，落地后取行李约 21:40 出来"],
+      "slots": [
+        { "period": "noon", "name": "小麦岛 · 海角发呆", "time": "09:30–11:30", "lat": 36.06608, "lng": 120.41866,
+          "rating": 4.6, "review": "免费海角公园，环形步道+礁石草坪，青岛出片圣地", "openingHours": "全天开放", "ticketPrice": "免费",
+          "transport": { "mode": "自驾 · 市区", "fare": "停车约 ¥10/时", "duration": "青岛各区约 30–50 分钟" } },
+        { "period": "evening", "name": "台东三路步行街 · 夜市原浆", "time": "17:00–19:30", "lat": 36.08124, "lng": 120.35248,
+          "rating": 4.3, "review": "百年商业街，烤鱿鱼/海菜凉粉/袋装原浆一站式", "openingHours": "全天，夜市 17:00 后最热闹", "ticketPrice": "免费" },
+        { "period": "evening", "name": "青岛胶东国际机场 · 接机", "time": "21:00 落地", "lat": 36.36196, "lng": 120.08800,
+          "rating": 4.5, "review": "女朋友航班 21:00 到达，行李出来约 21:40", "transport": { "mode": "自驾", "fare": "停车约 ¥10/时", "duration": "市区出发约 50 分钟" } }
+      ],
+      "dining": [
+        { "meal": "早午餐", "place": "青岛老城随便一家甜沫铺 / 王姐烧烤(栈桥附近)", "hours": "约 06:30–13:00", "dishes": [ { "name": "甜沫 + 三鲜锅贴", "price": "¥15–25" }, { "name": "烤鱿鱼串", "price": "¥10–20" } ] },
+        { "meal": "晚餐", "place": "台东夜市边走边吃", "hours": "17:00–22:00", "dishes": [ { "name": "袋装青岛原浆", "price": "¥15–25" }, { "name": "海菜凉粉 / 烤生蚝", "price": "¥10–30" } ] }
+      ]
+    },
+    {
+      "date": "2026-10-03",
+      "weekday": "周六",
+      "theme": "抵达威海 · 大本营报到",
+      "tips": ["不早起：睡到自然醒，10:00 左右出发（威青/荣乌高速，约 260km / 3h），13:00 到威海先干饭", "朋友一家自行到威海汇合，晚上民宿周边一起吃饭"],
+      "slots": [
+        { "period": "noon", "name": "幕锦日落海景民宿 · 入住", "time": "14:00", "lat": 37.52866, "lng": 122.04171,
+          "rating": 4.7, "review": "国际海水浴场片区一线海景，下楼就是沙滩；放好行李换上拍照的行头",
+          "openingHours": "入住一般 14:00 后", "ticketPrice": "已预订" },
+        { "period": "noon", "name": "国际海水浴场 · 沙滩发呆", "time": "15:00–17:10", "lat": 37.52866, "lng": 122.04171,
+          "rating": 4.6, "review": "细腻沙滩+缓浪，十月的海是深蓝金边；沙滩漫步、拍剪影，下水看勇气",
+          "openingHours": "全天开放", "ticketPrice": "免费" },
+        { "period": "evening", "name": "日落湾 · 小石岛日落", "time": "17:20–18:10", "lat": 37.52732, "lng": 122.00625,
+          "rating": 4.7, "review": "10 月初日落约 17:40，提前 20 分钟占好机位；礁石剪影+落日熔金",
+          "openingHours": "全天开放", "ticketPrice": "免费" },
+        { "period": "evening", "name": "火炬八街 · 夜色扫街", "time": "19:00–20:30", "lat": 37.52178, "lng": 122.02639,
+          "rating": 4.5, "review": "网红斜坡街道+海景尽头，白天人山人海、晚饭后人潮退去更好拍",
+          "openingHours": "全天开放（商铺约 10:00–22:00）", "ticketPrice": "免费" }
+      ],
+      "dining": [
+        { "meal": "午餐", "place": "蚝堡 · 亚洲吃蚝公司（国际海水浴场片区）", "hours": "约 11:00–22:00，国庆排队建议 17 点前或错峰", "dishes": [ { "name": "乳山生蚝三吃（蒜蓉/清蒸/芝士）", "price": "¥68–128/打" }, { "name": "海鲜拼盘", "price": "¥98–158" } ] },
+        { "meal": "晚餐", "place": "火炬八街周边韩式小店 / 民宿楼下烧烤", "hours": "约 17:00–23:00", "dishes": [ { "name": "韩式炸鸡啤酒", "price": "¥60–90" }, { "name": "烤海鲜拼", "price": "¥80–120" } ] }
+      ]
+    },
+    {
+      "date": "2026-10-04",
+      "weekday": "周日",
+      "theme": "荣成出片日 · 那香海 + 市区海线",
+      "tips": ["不早起：11:00 出发去那香海（约 50km / 1h），12:00 开玩、小镇吃午餐", "那香海→市区约 55km / 1h，午餐后返程，下午连刷市区海线", "环海路孙家疃段国庆车多，观景靠观景台，不占道停车"],
+      "slots": [
+        { "period": "morning", "name": "那香海 · 钻石沙滩", "time": "12:00–14:30", "lat": 37.40158, "lng": 122.40309,
+          "rating": 4.6, "review": "胶东最细的白沙滩+SOHO 风建筑群，随手一拍就是大片", "openingHours": "全天开放（小镇商铺约 09:00–21:00）", "ticketPrice": "沙滩免费",
+          "transport": { "mode": "自驾 · 环海路/G18", "fare": "免费", "duration": "自民宿约 50km / 1h" } },
+        { "period": "noon", "name": "幸福门 · 地标打卡", "time": "15:20–16:00", "lat": 37.50049, "lng": 122.12282,
+          "rating": 4.4, "review": "威海之门地标，海边广场吹风拍照；登门视野一般，地面拍就够",
+          "openingHours": "广场全天", "ticketPrice": "广场免费（登门参考 ¥30–40，可不登）" },
+        { "period": "noon", "name": "威海公园 · 滨海步道", "time": "16:10–16:50", "lat": 37.46149, "lng": 122.14057,
+          "rating": 4.4, "review": "海边雕塑步道慢慢走，看本地人钓螃蟹遛弯", "openingHours": "全天开放", "ticketPrice": "免费" },
+        { "period": "evening", "name": "猫头山 · 环海路日落", "time": "17:20–18:10", "lat": 37.5452, "lng": 122.1634,
+          "rating": 4.6, "review": "环海路经典海蚀地貌观景台；今日日落约 17:42，海面碎金（坐标为观景段参考点）",
+          "openingHours": "全天开放", "ticketPrice": "免费" },
+        { "period": "evening", "name": "韩乐坊不夜城 · 夜市+韩餐", "time": "19:30–21:30", "lat": 37.42711, "lng": 122.14833,
+          "rating": 4.4, "review": "威海韩国城氛围拉满：霓虹夜市+部队锅烤肉，韩货小店顺便逛",
+          "openingHours": "约 10:00–22:30，夜间最热闹", "ticketPrice": "免费入场" }
+      ],
+      "dining": [
+        { "meal": "午餐", "place": "那香海小镇 / 荣成渔家海鲜（港西镇一带）", "hours": "约 10:30–14:00", "dishes": [ { "name": "海肠捞饭", "price": "¥40–60/例" }, { "name": "鲅鱼水饺", "price": "¥30–45/斤" }, { "name": "清蒸梭子蟹", "price": "时价 ¥60–120/只" } ] },
+        { "meal": "晚餐", "place": "韩乐坊（韩餐/夜市小吃）", "hours": "约 10:00–22:30", "dishes": [ { "name": "部队锅 / 烤五花肉套餐", "price": "¥88–158" }, { "name": "辣炒年糕+鱼饼汤", "price": "¥25–40" } ] }
+      ],
+      "alternatives": [
+        { "label": "方案A · 那香海+市区海线（本日主方案）", "summary": "上午荣成出片，下午市区海线+猫头山日落，晚上韩乐坊，动线顺" },
+        { "label": "方案B · 葡萄滩+半月湾环海路深度自驾", "summary": "人少纯海景，孙家疃段一路观景台，适合不想跑远的躺平日" }
+      ]
+    },
+    {
+      "date": "2026-10-05",
+      "weekday": "周一",
+      "theme": "赶海 + 布鲁威斯号 · 沉船日落",
+      "tips": ["不早起：11 点出发先吃海鲜加工午餐，午后再战", "赶海只追当日午后低潮（潮汐 App 为准，低潮前后 2 小时最佳）；若当日只有早潮，赶海挪到 10.6 上午或改夜潮赶海（头灯+手套）", "民宿→布鲁威斯号约 60km / 1.2h；看完日落返程天已黑，环海路慢开注意会车", "夜猫子可选：沙滩星空夜拍、火炬八街夜街，或通宵到次日 05:50 看日出再睡回笼觉"],
+      "slots": [
+        { "period": "noon", "name": "海鲜市场 · 买+加工午餐", "time": "11:00–12:30", "lat": 37.4635, "lng": 122.142,
+          "rating": 4.4, "review": "睡到自然醒的第一站：现挑现称，隔壁加工店现做，比点菜划算一半（点位为市场密集的市区海线参考位置）",
+          "openingHours": "市场约 06:00–17:00，加工店 11:00–21:00", "ticketPrice": "食材时价 + 加工费 ¥15–30/道" },
+        { "period": "noon", "name": "小石岛 · 午后赶海", "time": "13:00–15:00（以当日午后低潮为准）", "lat": 37.52732, "lng": 122.00625,
+          "rating": 4.5, "review": "退潮后的大片礁石滩：蛤蜊、小螃蟹、海星；民宿步行可达，装备带齐",
+          "openingHours": "全天（看潮汐）", "ticketPrice": "免费" },
+        { "period": "evening", "name": "布鲁威斯号 · 搁浅巨轮日落", "time": "16:15–17:50（日落约 17:42）", "lat": 37.40301, "lng": 122.54758,
+          "rating": 4.7, "review": "成山镇河口村海域搁浅的万吨巨轮，威海压轴机位：下午侧光拍到日落 golden hour，巨轮剪影+落日熔金",
+          "openingHours": "全天（海边礁石注意安全，涨潮留意退路）", "ticketPrice": "免费",
+          "transport": { "mode": "自驾 · 环海路/G18", "fare": "免费", "duration": "自小石岛约 60km / 1小时12分" } }
+      ],
+      "dining": [
+        { "meal": "午餐", "place": "海鲜市场买了找店加工（威海海鲜大市场 / 合庆码头方向）", "hours": "市场约 06:00–17:00，加工店 11:00–21:00", "dishes": [ { "name": "皮皮虾 / 梭子蟹（时价）", "price": "时价" }, { "name": "蛤蜊蒸蛋 + 蒜蓉扇贝（加工费约 ¥15–30/道）", "price": "¥15–30/道" } ] },
+        { "meal": "晚餐", "place": "蚝堡二刷 或 民宿周边渔家院（惜别宴）", "hours": "约 11:00–22:00", "dishes": [ { "name": "酱焖小黄鱼", "price": "¥48–68" }, { "name": "葱烧海参（预算允许）", "price": "¥88–168" } ] }
+      ],
+      "alternatives": [
+        { "label": "方案A · 布鲁威斯号沉船日落（本日主方案）", "summary": "压轴出片：下午侧光到日落连拍，看完日落后返程晚餐" },
+        { "label": "方案B · 半月湾→葡萄滩日落兜风", "summary": "不想跑 60km 时的备选：孙家疃环海路西段，人少纯海景" }
+      ]
+    },
+    {
+      "date": "2026-10-06",
+      "weekday": "周二",
+      "theme": "自然醒 · 送机 · 返程上海",
+      "tips": ["不早起：睡到自然醒，10:30 起收拾退房（想通宵看 05:50 日出就放到 10.5 夜里，看完补觉）", "11:00 前退房、行李上车；13:30 从机场出发回上海（约 950km / 10h+，3 人轮换驾驶，凌晨到家）"],
+      "slots": [
+        { "period": "morning", "name": "国际海水浴场 · 最后的海", "time": "10:30–11:30", "lat": 37.52866, "lng": 122.04171,
+          "rating": 4.6, "review": "退房前最后一轮沙滩漫步+拍照；不赶时间，沙滩留给前面几天慢慢刷", "openingHours": "全天开放", "ticketPrice": "免费" },
+        { "period": "noon", "name": "威海大水泊国际机场 · 国际出发送机", "time": "12:45–13:30", "lat": 37.18651, "lng": 122.22942,
+          "rating": 4.4, "review": "国际出发流程：值机→海关→边检→安检，值机一般起飞前 60 分钟截止；军民合用机场禁止拍摄机坪跑道",
+          "openingHours": "国际航班提前 2.5–3h 到达", "ticketPrice": "送机免费（停车短时约 ¥10–20）",
+          "transport": { "mode": "自驾", "fare": "免费", "duration": "自民宿约 45km / 55 分钟" } }
+      ],
+      "dining": [
+        { "meal": "早午餐", "place": "民宿周边面馆 / 鲅鱼饺子馆（高区文化西路一带）", "hours": "约 07:00–13:00", "dishes": [ { "name": "鲅鱼水饺", "price": "¥25–40/斤" }, { "name": "海鲜面", "price": "¥20–35" } ] },
+        { "meal": "晚餐", "place": "返程高速服务区（临沂/新沂一带）", "hours": "全天", "dishes": [ { "name": "服务区热食 + 自备零食", "price": "¥30–50" } ] }
+      ]
+    }
+  ]
+}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ===== travel-plan-viz 引擎：map.js（原样内联） =====
+// Leaflet 地图引擎。纯函数（buildNavLink/buildMapAppLinks/routeCoordinates/gcj02ToWgs84）可单元测试；
+// initTravelMap 需浏览器 + Leaflet (L)。浏览器与 Node 双用。
+
+// HTML 转义，防止 XSS
+function escapeHTML(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// 生成跳转手机地图导航的链接。
+// iOS 不识别 geo: scheme，用 Apple Maps 的 https 通用链接；其余平台用 geo:。
+// ua 可选（浏览器里传 navigator.userAgent），不传则回退 geo:。
+function buildNavLink(lat, lng, label, ua) {
+  if (ua && /iPhone|iPad|iPod/.test(ua)) {
+    return 'https://maps.apple.com/?ll=' + lat + ',' + lng + '&q=' + encodeURIComponent(label);
+  }
+  return 'geo:' + lat + ',' + lng + '?q=' + lat + ',' + lng + '(' + encodeURIComponent(label) + ')';
+}
+
+// 常用地图 App 的点位链接（免 key 的官方 URI 规范：高德 URI API、Google Maps URLs）。
+function buildMapAppLinks(lat, lng, label) {
+  var amap = {
+    label: '高德地图',
+    url: 'https://uri.amap.com/marker?position=' + lng + ',' + lat
+      + '&name=' + encodeURIComponent(label)
+      + '&coordinate=wgs84&callnative=1&src=travel-plan-viz',
+  };
+  var google = {
+    label: 'Google 地图',
+    url: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(lat + ',' + lng),
+  };
+  return isInChinaBBox(lat, lng) ? [amap] : [google, amap];
+}
+
+var GCJ_A = 6378245.0;
+var GCJ_EE = 0.00669342162296594323;
+
+function isInChinaBBox(lat, lng) {
+  return lng >= 72.004 && lng <= 137.8347 && lat >= 0.8293 && lat <= 55.8271;
+}
+
+function gcjTransformLat(x, y) {
+  var ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
+  ret += (20.0 * Math.sin(6.0 * x * Math.PI) + 20.0 * Math.sin(2.0 * x * Math.PI)) * 2.0 / 3.0;
+  ret += (20.0 * Math.sin(y * Math.PI) + 40.0 * Math.sin(y / 3.0 * Math.PI)) * 2.0 / 3.0;
+  ret += (160.0 * Math.sin(y / 12.0 * Math.PI) + 320.0 * Math.sin(y * Math.PI / 30.0)) * 2.0 / 3.0;
+  return ret;
+}
+
+function gcjTransformLng(x, y) {
+  var ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));
+  ret += (20.0 * Math.sin(6.0 * x * Math.PI) + 20.0 * Math.sin(2.0 * x * Math.PI)) * 2.0 / 3.0;
+  ret += (20.0 * Math.sin(x * Math.PI) + 40.0 * Math.sin(x / 3.0 * Math.PI)) * 2.0 / 3.0;
+  ret += (150.0 * Math.sin(x / 12.0 * Math.PI) + 300.0 * Math.sin(x / 30.0 * Math.PI)) * 2.0 / 3.0;
+  return ret;
+}
+
+function gcj02ToWgs84(lat, lng) {
+  if (!isInChinaBBox(lat, lng)) return { lat: lat, lng: lng };
+  var dLat = gcjTransformLat(lng - 105.0, lat - 35.0);
+  var dLng = gcjTransformLng(lng - 105.0, lat - 35.0);
+  var radLat = lat / 180.0 * Math.PI;
+  var magic = Math.sin(radLat);
+  magic = 1 - GCJ_EE * magic * magic;
+  var sqrtMagic = Math.sqrt(magic);
+  dLat = (dLat * 180.0) / ((GCJ_A * (1 - GCJ_EE)) / (magic * sqrtMagic) * Math.PI);
+  dLng = (dLng * 180.0) / (GCJ_A / sqrtMagic * Math.cos(radLat) * Math.PI);
+  return { lat: lat - dLat, lng: lng - dLng };
+}
+
+function routeCoordinates(points) {
+  return points.map(function (p) { return [p.lat, p.lng]; });
+}
+
+function initTravelMap(elementId, points, opts) {
+  opts = opts || {};
+  var map = L.map(elementId);
+  L.tileLayer(opts.tileUrl || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: opts.attribution || '© OpenStreetMap contributors',
+    maxZoom: 19,
+    subdomains: opts.subdomains || 'abc',
+  }).addTo(map);
+
+  var ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+  // 可选显示坐标换算（用于 GCJ-02 瓦片源如高德）：仅影响标记/连线位置，导航链接仍用原始 WGS-84 坐标
+  var toDisplay = opts.toDisplayCoord || function (lat, lng) { return { lat: lat, lng: lng }; };
+  points.forEach(function (p, i) {
+    var icon = L.divIcon({
+      className: 'route-pin',
+      html: '<span class="route-pin__num">' + (i + 1) + '</span>',
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+    });
+    var navLinks = [{ label: '导航', url: buildNavLink(p.lat, p.lng, p.name, ua) }]
+      .concat(buildMapAppLinks(p.lat, p.lng, p.name));
+    var dc = toDisplay(p.lat, p.lng);
+    L.marker([dc.lat, dc.lng], { icon: icon }).addTo(map).bindPopup(
+      '<b>' + (i + 1) + '. ' + escapeHTML(p.name) + '</b><br>'
+      + (p.time ? escapeHTML(p.time) + '<br>' : '')
+      + navLinks.map(function (l) {
+          return '<a href="' + l.url + '">' + escapeHTML(l.label) + '</a>';
+        }).join(' · ')
+    );
+  });
+
+  var coords = points.map(function (p) { var dc = toDisplay(p.lat, p.lng); return [dc.lat, dc.lng]; });
+  if (coords.length > 1) {
+    L.polyline(coords, { dashArray: '6 8', weight: 2 }).addTo(map);
+  }
+  map.fitBounds(coords.length ? coords : [[0, 0]], { padding: [30, 30] });
+  return map;
+}
+// ===== travel-plan-viz 引擎：reminders.js（原样内联） =====
+// 出发前提醒：截止日期计算 + 渲染。浏览器与 Node 双用。
+
+function computeReminders(startDateISO, items) {
+  return items
+    .map(function (it) {
+      var d = new Date(startDateISO + 'T00:00:00Z');
+      d.setUTCDate(d.getUTCDate() - it.leadDays);
+      return { item: it.item, leadDays: it.leadDays, deadline: d.toISOString().slice(0, 10) };
+    })
+    .sort(function (a, b) {
+      return a.deadline < b.deadline ? -1 : a.deadline > b.deadline ? 1 : 0;
+    });
+}
+
+function renderChecklistHTML(reminders) {
+  var lis = reminders.map(function (r) {
+    return '<li class="todo-item">'
+      + '<input type="checkbox"> '
+      + '<span class="todo-deadline">' + r.deadline + '前</span> '
+      + '<span class="todo-text">' + escapeHTML(r.item) + '（建议提前' + r.leadDays + '天）</span>'
+      + '</li>';
+  }).join('');
+  return '<ul class="pretrip-todo">' + lis + '</ul>';
+}
+
+function reminderBadgeHTML(leadDays) {
+  return '<span class="reminder-badge">⚠️ 建议提前' + leadDays + '天订</span>';
+}
+</script>
+<script>
+// ===== 页面渲染：从内嵌 trip-data JSON 构建全部区块 =====
+(function () {
+  var trip = JSON.parse(document.getElementById('trip-data').textContent);
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  // 00 待办清单
+  $('checklist-card').innerHTML = renderChecklistHTML(computeReminders(trip.startDate, trip.reminders));
+
+  // 01 行前须知
+  var p = trip.preTrip;
+  $('pretrip-body').innerHTML =
+    '<dt>天气</dt><dd>' + escapeHTML(p.weather.summary) + '</dd>' +
+    '<dt>预警</dt><dd>' + escapeHTML(p.weather.typhoon) + '</dd>' +
+    '<dt>穿搭</dt><dd>' + escapeHTML(p.packing) + '</dd>' +
+    '<dt>支付</dt><dd>' + escapeHTML(p.payment) + '</dd>' +
+    '<dt>App</dt><dd>' + p.apps.map(escapeHTML).join(' · ') + '</dd>' +
+    '<dt>票务</dt><dd>' + escapeHTML(p.ticketTip) + '</dd>';
+
+  // 02 航班
+  var f = trip.flights || { booked: [], candidates: [] };
+  var fHtml = '';
+  (f.booked || []).forEach(function (b) {
+    fHtml += '<div class="card flight-booked"><span class="badge ok">已预订</span>'
+      + '<div style="font-weight:650;margin-top:6px">' + escapeHTML(b.label) + '</div>'
+      + '<div style="font-size:13px;color:var(--text-dim)">' + escapeHTML(b.code) + '</div>'
+      + '<div style="font-size:13.5px;margin-top:4px">' + escapeHTML(b.time) + '</div></div>';
+  });
+  (f.candidates || []).forEach(function (c) {
+    fHtml += '<div class="card"><span class="badge pend">待选 · 请自行核实</span>'
+      + '<div style="font-weight:650;margin-top:6px">' + escapeHTML(c.label) + '</div>'
+      + '<div style="font-size:13px;color:var(--text-dim)">' + escapeHTML(c.code) + ' · ' + escapeHTML(c.time) + '</div>'
+      + (c.note ? '<div style="font-size:13px;margin-top:4px">' + escapeHTML(c.note) + '</div>' : '') + '</div>';
+  });
+  $('flights-body').innerHTML = fHtml;
+
+  // 03 酒店
+  var hHtml = '';
+  (trip.hotelAreas || []).forEach(function (a) {
+    var opts = a.options.map(function (o) {
+      return '<div class="tier-line"><span class="tier">' + escapeHTML(o.tier) + '</span>'
+        + '<div class="hotel-opt"><b>' + escapeHTML(o.name) + '</b> <span class="price">' + escapeHTML(o.priceRange) + '</span>'
+        + '<div style="font-size:12.5px;color:var(--text-dim)">' + escapeHTML(o.note) + '</div></div></div>';
+    }).join('');
+    hHtml += '<div class="card"><div style="font-weight:650;font-size:16px">' + escapeHTML(a.area) + '</div>'
+      + '<div style="font-size:13px;color:var(--text-dim);margin:2px 0 4px">' + escapeHTML(a.reason) + '</div>' + opts + '</div>';
+  });
+  $('hotels-body').innerHTML = hHtml;
+
+  // 免责声明为静态正文（与 trip-data JSON 中同文），不经 JS 注入，保证离线/无脚本也可读
+
+  // 04 地图（按行程顺序汇总 slot 点位；同坐标连续出现时去重）
+  var seen = {}, points = [];
+  trip.days.forEach(function (d) {
+    (d.slots || []).forEach(function (s) {
+      var k = s.lat + ',' + s.lng + ',' + s.name;
+      if (!seen[k]) { seen[k] = 1; points.push({ lat: s.lat, lng: s.lng, name: s.name, time: d.weekday + ' ' + (s.time || '') }); }
+    });
+  });
+  // 高德瓦片为 GCJ-02：标记/连线显示坐标由 WGS-84 精确换算（误差 ±1–2 米）；
+  // 弹窗里的导航/高德链接仍用原始 WGS-84（uri.amap.com 带 coordinate=wgs84，由高德官方换算），两边都准
+  function wgs84ToGcj02(lat, lng) {
+    if (!isInChinaBBox(lat, lng)) return { lat: lat, lng: lng };
+    var dLat = gcjTransformLat(lng - 105.0, lat - 35.0);
+    var dLng = gcjTransformLng(lng - 105.0, lat - 35.0);
+    var radLat = lat / 180.0 * Math.PI;
+    var magic = Math.sin(radLat);
+    magic = 1 - GCJ_EE * magic * magic;
+    var sqrtMagic = Math.sqrt(magic);
+    dLat = (dLat * 180.0) / ((GCJ_A * (1 - GCJ_EE)) / (magic * sqrtMagic) * Math.PI);
+    dLng = (dLng * 180.0) / (GCJ_A / sqrtMagic * Math.cos(radLat) * Math.PI);
+    return { lat: lat + dLat, lng: lng + dLng };
+  }
+  initTravelMap('map', points, {
+    tileUrl: 'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',
+    subdomains: '1234',
+    attribution: '© 高德地图 AutoNavi',
+    toDisplayCoord: wgs84ToGcj02
+  });
+
+  // 05 每日时间轴
+  var PERIOD = { morning: '上午', noon: '午间/下午', evening: '傍晚/晚上' };
+  var dHtml = '';
+  trip.days.forEach(function (d) {
+    dHtml += '<div class="day-head"><div class="day-date">' + d.date + ' · ' + d.weekday + '</div>'
+      + '<div class="day-title">' + escapeHTML(d.theme) + '</div></div><div class="day-body">';
+    dHtml += '<div class="card" style="padding-left:22px">';
+    (d.slots || []).forEach(function (s) {
+      dHtml += '<div class="slot"><div class="slot-time">' + PERIOD[s.period] + ' · ' + escapeHTML(s.time) + '</div>'
+        + '<div class="slot-name">' + escapeHTML(s.name)
+        + (s.rating ? ' <span class="star">★ ' + s.rating + '</span>' : '') + '</div>'
+        + (s.review ? '<div class="slot-review">' + escapeHTML(s.review) + '</div>' : '');
+      var tags = [];
+      if (s.openingHours) tags.push('<span class="tag">' + escapeHTML(s.openingHours) + '</span>');
+      if (s.closedDays) tags.push('<span class="tag">' + escapeHTML(s.closedDays) + '</span>');
+      if (s.ticketPrice) tags.push('<span class="tag t">🎫 ' + escapeHTML(s.ticketPrice) + '</span>');
+      if (s.transport) tags.push('<span class="tag t">🚗 ' + escapeHTML(s.transport.mode) + (s.transport.duration ? ' · ' + escapeHTML(s.transport.duration) : '') + (s.transport.fare ? ' · ' + escapeHTML(s.transport.fare) : '') + '</span>');
+      if (s.seasonal) tags.push('<span class="tag">' + escapeHTML(s.seasonal) + '</span>');
+      if (tags.length) dHtml += '<div class="tags">' + tags.join('') + '</div>';
+      if (s.needsBooking) dHtml += '<div style="margin-top:7px">' + reminderBadgeHTML(s.leadDays) + '</div>';
+      dHtml += '</div>';
+    });
+    if (d.tips && d.tips.length) {
+      dHtml += '<ul class="tips-list" style="margin-top:4px">' + d.tips.map(function (t) { return '<li>' + escapeHTML(t) + '</li>'; }).join('') + '</ul>';
+    }
+    dHtml += '</div>';
+    // 右列：餐饮 + 二选一
+    dHtml += '<div class="dining-block">';
+    (d.dining || []).forEach(function (m) {
+      dHtml += '<div class="dining" style="margin-bottom:10px"><div class="meal">' + escapeHTML(m.meal) + '</div>'
+        + '<div class="place">' + escapeHTML(m.place) + '</div>'
+        + (m.hours ? '<div class="hours">' + escapeHTML(m.hours) + '</div>' : '')
+        + (m.dishes || []).map(function (ds) {
+            return '<div class="dish"><span>' + escapeHTML(ds.name) + '</span><span class="p">' + escapeHTML(ds.price) + '</span></div>';
+          }).join('') + '</div>';
+    });
+    if (d.alternatives && d.alternatives.length) {
+      dHtml += '<div class="card" style="margin-top:2px"><div style="font-size:13px;color:var(--accent2);letter-spacing:.1em;margin-bottom:8px">单日二选一</div><div class="alt">'
+        + d.alternatives.map(function (a) {
+            return '<div class="opt"><b>' + escapeHTML(a.label) + '</b><br>' + escapeHTML(a.summary) + '</div>';
+          }).join('') + '</div></div>';
+    }
+    dHtml += '</div></div>';
+  });
+  $('days-body').innerHTML = dHtml;
+
+  // 06 全程贴士
+  $('tips-body').innerHTML = (trip.tips || []).map(function (t) { return '<li>' + escapeHTML(t) + '</li>'; }).join('');
+})();
+</script>
+</body>
+</html>
